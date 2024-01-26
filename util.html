@@ -1,0 +1,243 @@
+<script>
+    const throttle = (fn, delay) => {
+        let time = Date.now();
+        return () => {
+            if ((time + delay - Date.now()) <= 0) {
+                fn();
+                time = Date.now();
+            }
+        }
+    }
+
+    function lazyLoadImages() {
+        var lazyImages = [].slice.call(document.querySelectorAll('img[data-src]'));
+
+        if ('IntersectionObserver' in window) {
+            let lazyImageObserver = new IntersectionObserver(function (entries, observer) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        let lazyImage = entry.target;
+                        // Use a callback to handle the asynchronous nature of `google.script.run`
+                        google.script.run.withSuccessHandler(function (dataUrl) {
+                            lazyImage.src = dataUrl;
+                            lazyImage.removeAttribute('data-src');
+                            lazyImageObserver.unobserve(lazyImage);
+                        }).getImageDataUrl(lazyImage.getAttribute('data-src').match(/id=([^&]+)/)[1]);
+                    }
+                });
+            });
+            lazyImages.forEach(function (lazyImage) {
+                lazyImageObserver.observe(lazyImage);
+            });
+        } else {
+            // Fallback for browsers that don't support IntersectionObserver
+            lazyImages.forEach(function (lazyImage) {
+                google.script.run.withSuccessHandler(function (dataUrl) {
+                    lazyImage.src = dataUrl;
+                    lazyImage.removeAttribute('data-src');
+                }).getImageDataUrl(lazyImage.getAttribute('data-src').match(/id=([^&]+)/)[1]);
+            });
+        }
+    }
+
+    function getCookie(cookieName) {
+        var name = cookieName + "=";
+        var decodedCookie = decodeURIComponent(document.cookie);
+        var ca = decodedCookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+
+    function formatWon(data) {
+        if (data !== null && data !== undefined) {
+            return data.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + '원';
+        } else {
+            return '0';
+        }
+    }
+
+    function createElement(htmlTag, elementId, elementClassName, elementTextContent = '') {
+        const element = document.createElement(htmlTag);
+        element.id = elementId;
+        element.className = elementClassName;
+        element.textContent = elementTextContent;
+        return element;
+    }
+
+    function setAttributes(element, attributes) {
+        for (var key in attributes) {
+            element.setAttribute(key, attributes[key]);
+        }
+    }
+
+    function createCard(item, isCartItem, cartItemAmount, pageNo) {
+        var itemContainer = createElement('div', 'item-' + item.code, 'card card-entrance');
+        var cardBody = createElement('div', item.code + '-body', 'card-body d-flex flex-row justify-content-evenly');
+        var leftCol = createElement('div', item.code + '-body-left', 'col-6');
+        var itemCode = createElement('p', item.code + '-body-left-code', 'small mb-0 fw-bold', item.code);
+        var itemName = createElement('h5', item.name + '-text', '', item.name);
+        var priceDetails = document.createElement('div');
+        var itemPrice = createElement('p', item.code + item.price + '-text', '', `단가: ${formatWon(item.price)}`);
+        var totalPrice = createElement('p', item.code + item.price + '-text', 'total-price', '소 계: ');
+        var priceValue = createElement('p', item.code + item.price + '-p', 'price-value');
+        var middleCol = createElement('div', item.code + '-body-middle', 'col-4 d-flex flex-column');
+        var btnStepUp = createElement('button', item.code + '-button-up', 'btn btn-link px-2 btn-step-up');
+        btnStepUp.innerHTML = '<i class="fas fa-plus"></i>';
+        var inputQuantity = createElement('input', item.code + 'input', 'form-control form-control-sm');
+        setAttributes(inputQuantity, {
+            'type': 'number',
+            'min': '1',
+            'value': '1',
+        })
+        var btnStepDown = createElement('button', item.code + '-button-down', 'btn btn-link px-2 btn-step-down');
+        btnStepDown.innerHTML = '<i class="fas fa-minus"></i>';
+        var rightCol = createElement('div', item.code + '-body-right', 'col-2 d-flex justify-content-center align-items-center');
+        if (isCartItem) {
+            itemContainer.id = 'cartItem-' + item.code;
+            cardBody.classList.add('cart-item-container');
+            itemContainer.classList.add('cart-item-container');
+            priceValue.textContent = formatWon(item.price * cartItemAmount); // subtotal for the item in cart
+            inputQuantity.value = cartItemAmount;  // Update the quantity input to show the correct amount
+            inputQuantity.addEventListener('change', (e) => {
+                const cartItem = cartItems.find(cartItem => cartItem.code === item.code);
+                cartItem.amount = e.target.value;
+                updatedCode = item.code;
+                updateCartDisplay();
+            })
+            btnStepDown.addEventListener('click', function () {
+                const cartItem = cartItems.find(cartItem => cartItem.code === item.code);
+                if (cartItem && cartItem.amount > 1) {
+                    cartItem.amount--;
+                    inputQuantity.value = cartItem.amount;
+                    const quantity = parseFloat(inputQuantity.value);
+                    priceValue.textContent = formatWon(item.price * quantity);
+                    updatedCode = item.code;
+                    updateCartDisplay();
+                }
+            });
+            btnStepUp.addEventListener('click', function () {
+                const cartItem = cartItems.find(cartItem => cartItem.code === item.code);
+                cartItem.amount++;
+                inputQuantity.value = cartItem.amount;
+                const quantity = parseFloat(inputQuantity.value);
+                priceValue.textContent = formatWon(item.price * quantity);
+                updatedCode = item.code;
+                updateCartDisplay();
+            });
+            var closeDiv = createElement('div', item.code + '-close', 'col-1 d-flex justify-content-center align-items-center');
+            var spanClose = createElement('span', item.code + '-close-x', 'close');
+            spanClose.innerHTML = '&#10005;';
+            closeDiv.addEventListener('click', () => {
+                updatedCode = item.code;
+                cartItems = cartItems.filter(cartItem => cartItem.code !== item.code);
+                updateCartDisplay();
+            });
+            closeDiv.appendChild(spanClose);
+            rightCol.appendChild(closeDiv);
+        } else {
+            itemContainer.dataset.index = pageNo;
+            itemContainer.style.display = 'none';
+            priceValue.textContent = formatWon(item.price);
+            var cartButton = createElement('button', item.code + '-addC', 'btn btn-primary', '장바구니에 담기');
+            btnStepDown.addEventListener('click', function () {
+                inputQuantity.stepDown();
+                const quantity = parseFloat(inputQuantity.value);
+                priceValue.textContent = formatWon(item.price * quantity);
+            });
+            btnStepUp.addEventListener('click', function () {
+                inputQuantity.stepUp();
+                const quantity = parseFloat(inputQuantity.value);
+                priceValue.textContent = formatWon(item.price * quantity);
+            });
+            cartButton.addEventListener('click', () => {
+                var amount = parseInt(inputQuantity.value, 10);
+                if (!item || amount <= 0) return;
+                var existingCartItemIndex = cartItems.findIndex(listItem => listItem.name === item.name);
+                if (existingCartItemIndex !== -1) {
+                    cartItems[existingCartItemIndex].amount += parseInt(amount, 10);
+                    var existingCartItem = cartItems.splice(existingCartItemIndex, 1)[0];
+                    cartItems.push(existingCartItem);
+                } else {
+                    cartItems.push({
+                        code: item.code,
+                        name: item.name,
+                        amount: parseInt(amount, 10),
+                        price: parseInt(item.price, 10),
+                    });
+                }
+                updatedCode = item.code;
+                updateCartDisplay();
+            });
+            rightCol.appendChild(cartButton);
+        }
+        itemContainer.appendChild(cardBody);
+        setTimeout(() => {
+            itemContainer.classList.add('card-slide-in');
+        }, 100);
+        cardBody.appendChild(leftCol);
+        cardBody.appendChild(middleCol);
+        cardBody.appendChild(rightCol);
+        leftCol.appendChild(itemCode);
+        leftCol.appendChild(itemName);
+        leftCol.appendChild(priceDetails);
+        middleCol.appendChild(btnStepUp);
+        middleCol.appendChild(inputQuantity);
+        middleCol.appendChild(btnStepDown);
+        totalPrice.appendChild(priceValue);
+        priceDetails.appendChild(itemPrice);
+        priceDetails.appendChild(totalPrice);
+
+        return itemContainer;
+    }
+
+
+
+    function updateCartDisplay() {
+        const cartItemsDiv = document.getElementById('cartItems');
+        let newTotal = 0;
+        newTotal = cartItems.reduce((accum, cartItem) => accum + (cartItem.price * cartItem.amount), 0);
+        var update = document.getElementById('cartItem-' + updatedCode);
+        if (update) {
+            var updateItem = cartItems.filter((cartItem) => cartItem.code === updatedCode)[0];
+            update.addEventListener('transitionend', function _onTransitionEnd() {
+                // Remove the event listener to prevent memory leaks or unintended behavior
+                update.removeEventListener('transitionend', _onTransitionEnd);
+
+                update.remove();
+                // Ensure that we only add the updated card if updateItem exists
+                if (updateItem) {
+                    var updatedCard = createCard(updateItem, true, updateItem.amount);
+                    cartItemsDiv.appendChild(updatedCard);
+                }
+            });
+            update.classList.add('slide-out');
+        } else {
+            var newItem = cartItems.filter((cartItem) => cartItem.code === updatedCode)[0];
+            console.log('newItem: ' + newItem);
+            if (newItem) {
+                var newCard = createCard(newItem, true, newItem.amount);
+                cartItemsDiv.appendChild(newCard);
+            }
+        }
+        cartItemsDiv.scrollTop = cartItemsDiv.scrollHeight;
+        total = newTotal;
+        document.getElementById('cartTotal').innerText = `총 금액: ${formatWon(total)}`;
+        const order = cartItems.map(item => [item.name, item.code, item.amount.toString(), item.price.toString()]);
+        let submission = initSubmission.concat(...order);
+        if (phoneValue) {
+            google.script.run.saveCartItems(submission, phoneValue);
+        }
+    }
+    var handleCheckoutClick = () => {
+        document.querySelector('.h-100.h-custom.hidden').classList.remove('hidden');
+        populateSummaryCart(cartItems, total);
+    };
+</script>

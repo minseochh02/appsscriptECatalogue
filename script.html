@@ -1,0 +1,112 @@
+<script>
+    var initSubmission = [
+        '', // customer name 0
+        '', //contact 1
+        '', //requested time 2
+        '', //payment type 3
+        '', //payment details 4
+        '', // shipping address 5
+        '', //total payment 6
+    ];
+    var submission;
+    var catalogueList = [];
+    var isDropdownChange = false;
+    var cartItems = [];
+    var phoneValue;
+    var unregistered = true;
+    var fullName;
+    var total = 0;
+    var updatedCode;
+    document.addEventListener('DOMContentLoaded', function () {
+        google.script.run.withSuccessHandler(populatePage).getEBookMetaData();
+        var userEmailSpan = document.getElementById("userInfo");
+        var cookiePhoneValue = getCookie("phone");
+        if (cookiePhoneValue) {
+            phoneValue = cookiePhoneValue;
+            userEmailSpan.innerText = 'phone number: ' + phoneValue;
+            unregistered = false;
+            document.getElementById('phone').value = phoneValue;
+            initSubmission[1] = phoneValue;
+            google.script.run
+                .withSuccessHandler((cart) => {
+                    cartItems = cart;
+                    cartItems.forEach((item) => {
+                        updatedCode = item.code;
+                        updateCartDisplay();
+                    });
+
+                })
+                .getUserCart(phoneValue);
+        } else {
+            showPopUp();
+        }
+    });
+
+    function populatePage(eBookMetaData) {
+        if (!eBookMetaData.length) return;
+        var viewer = document.getElementById('viewer');
+        viewer.addEventListener('scroll', syncProductWithScroll);
+        eBookMetaData.forEach((page, index) => {
+            var pageImg = document.createElement('img');
+
+            // Use either default lazy loading or set data-src for a custom solution.
+            pageImg.loading = 'lazy';
+            pageImg.dataset.src = "https://drive.google.com/uc?export=view&id=" + page.imageID; // use for custom lazy loading, if needed
+            pageImg.src = "https://lh3.googleusercontent.com/d/" + page.imageID; // use for custom lazy loading, if needed
+            pageImg.alt = page.content;
+            pageImg.id = `page-${index}`; // Added 'page-' for clarity and to prevent just numeric IDs
+            viewer.appendChild(pageImg);
+        });
+        document.getElementById("progressing").setAttribute('aria-valuemax', eBookMetaData.length);
+        populateSearchResult(eBookMetaData);
+        lazyLoadImages();
+    }
+
+    var userClickedCollapseOnPage = {};
+
+    function syncProductWithScroll() {
+        var images = document.querySelectorAll('#viewer img');
+        var viewerDiv = document.getElementById('viewer');
+        var viewportCenter = viewerDiv.clientHeight / 2;
+        var scrollY = viewerDiv.scrollTop;
+        var currentIndex = Array.prototype.findIndex.call(images, function (image) {
+            var imagePosRelativeToViewport = image.offsetTop - scrollY;
+            return imagePosRelativeToViewport + image.offsetHeight > viewportCenter;
+        });
+        if (currentIndex === -1) currentIndex = images.length - 1;
+
+        // Calculate progress based on current page index
+        var progressPercentage = ((currentIndex + 1) / images.length) * 100;
+        var progressBar = document.getElementById('progressing');
+
+        progressBar.style.width = progressPercentage + '%';
+        progressBar.setAttribute('aria-valuenow', progressPercentage.toFixed(0));
+        progressBar.textContent = (currentIndex + 1) + " / " + images.length;
+
+        // add logic here
+        var searchResults = document.querySelectorAll('.list-group-item.card-search');
+
+        searchResults.forEach(function (resultElement) {
+            if (resultElement.classList.contains('card-index-' + currentIndex)) {
+                resultElement.style.display = 'block';
+            } else {
+                resultElement.style.display = 'none';
+            }
+        });
+
+        var accordionToOpen = document.getElementById('panelsStayOpen-collapseOne');
+        var accordionHeading = document.querySelector('#panelsStayOpen-headingOne');
+        var isProductToShow = document.querySelector('.list-group-item.card-search.card-index-' + currentIndex + ':not([style*="display: none"])') !== null;
+
+        // Open the accordion if the current index matches a specific condition
+        if (isProductToShow && !userClickedCollapseOnPage[currentIndex]) {
+            accordionToOpen.classList.add('show');
+            accordionToOpen.setAttribute('aria-expanded', 'true');
+            accordionHeading.setAttribute('aria-expanded', 'true');
+        } else {
+            accordionToOpen.classList.remove('show');
+            accordionToOpen.setAttribute('aria-expanded', 'false');
+            accordionHeading.setAttribute('aria-expanded', 'false');
+        }
+    }
+</script>

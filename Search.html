@@ -1,0 +1,123 @@
+<div id="popup">
+    <div class="accordion" id="accordionPanelsStayOpen">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="panelsStayOpen-headingOne">
+                <button class="container accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#panelsStayOpen-collapseOne" aria-expanded="false"
+                    aria-controls="panelsStayOpen-collapseOne" style="justify-content: center;">
+                    <!-- <i class="fa-solid fa-chevron-up"></i> -->
+                </button>
+            </h2>
+            <div id="panelsStayOpen-collapseOne" class="accordion-collapse collapse"
+                aria-labelledby="panelsStayOpen-headingOne">
+                <div class="accordion-body">
+                    <!-- Add an input field for the filter here -->
+                    <input id="myInput" type="text" class="form-control mb-2" placeholder="Search...">
+                    <ul class="list-group" id="myList">
+                        <!-- List will be populated by JavaScript -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById('myInput').addEventListener('keyup', function () {
+            const value = this.value.toLowerCase();
+            const listItems = document.querySelectorAll('#myList .list-group-item');
+
+            listItems.forEach(function (item) {
+                if (item.textContent.toLowerCase().includes(value)) {
+                    item.style.display = 'block'; // use block instead of '' for Bootstrap 5
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+    document.querySelector('#panelsStayOpen-headingOne').addEventListener('click', function () {
+        // Calculate the current index based on the scroll position
+        var images = document.querySelectorAll('#viewer img');
+        var viewerDiv = document.getElementById('viewer');
+        var viewportCenter = viewerDiv.clientHeight / 2;
+        var scrollY = viewerDiv.scrollTop;
+        var currentIndex = Array.prototype.findIndex.call(images, function (image) {
+            var imagePosRelativeToViewport = image.offsetTop - scrollY;
+            return imagePosRelativeToViewport + image.offsetHeight > viewportCenter;
+        });
+
+        // If the accordion is being opened by the user, remember that page
+        // If the accordion is being closed by the user, forget that page
+        if (userClickedCollapseOnPage[currentIndex]) {
+            delete userClickedCollapseOnPage[currentIndex];
+        } else {
+            userClickedCollapseOnPage[currentIndex] = true;
+        }
+    });
+</script>
+<script>
+    function populateSearchResult(catalogueList) {
+        catalogueList.forEach(function (pageData, pageIndex) {
+            var listItem = document.createElement('li');
+            listItem.className = 'list-group-item';
+            listItem.classList.add('card-index-' + pageIndex);
+            listItem.classList.add('card-search');
+
+            var searchResult = document.createElement('div');
+            searchResult.className = "searchResult";
+            searchResult.innerHTML = '<div class="searchResult"><h4> Category: ' + pageData.category + '</h4>' +
+                '<h6> Page Number: ' + pageData.pageNo + '</h6></div>';
+            searchResult.addEventListener('click', function () {
+                var scrollToElement = document.getElementById('page-' + pageIndex.toString());
+                console.log(scrollToElement);
+                if (scrollToElement) {
+                    scrollToElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    var resultElement = document.querySelector('#result');
+                    resultElement.classList.remove('expanded');
+                    resultElement.classList.add('hidden');
+                }
+            });
+            listItem.appendChild(searchResult);
+
+            pageData.items.forEach(function (item, index) {
+                var card = createCard(item, false, 0, index);
+                card.style.display = 'block';
+                listItem.appendChild(card);
+            });
+            var list = document.getElementById('myList');
+            list.appendChild(listItem);
+        });
+    }
+</script>
+
+<style>
+    #popup {
+        position: fixed;
+        bottom: 0px;
+        max-height: 100vh;
+        overflow: scroll;
+    }
+
+    .list-group.hidden {
+        width: 100vw;
+        height: 0px;
+        background: rgba(255, 255, 255, 0.9);
+        /* Semi-transparent white background */
+        transition: height 0.3s ease-in-out;
+    }
+
+    .list-group.expanded {
+        height: 90vh;
+        overflow: scroll;
+        display: block;
+        background: rgba(255, 255, 255, 0.9);
+        /* Semi-transparent white background */
+        z-index: 10;
+        /* Ensures it's above other content */
+    }
+
+    .searchResult {
+        min-width: 15vw;
+    }
+</style>

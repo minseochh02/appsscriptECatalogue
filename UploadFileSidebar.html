@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+</head>
+
+<body>
+    <div id="body" class="file-upload-wrapper">
+        <form>
+            <input type="file" id="input-file-now" class="file-upload" multiple />
+            <button id="submit" type="submit"> Upload All Files </button>
+        </form>
+    </div>
+
+    <!-- Only need one overlay div, we can reuse it for each stage -->
+    <div id="overlay"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:2; text-align:center;">
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);">
+            <div class="spinner-border text-light" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p id="overlay-message">Uploading files...</p> <!-- We can change this message dynamically -->
+        </div>
+    </div>
+
+    <script>
+        var files = [];
+        var folderIdString = '';
+        var form = document.querySelector('form');
+        var overlay = document.getElementById('overlay');
+        var overlayMessage = document.getElementById('overlay-message');
+
+        function showOverlay(message) {
+            overlayMessage.textContent = message; // Set the appropriate message
+            overlay.style.display = 'block'; // Show the overlay
+        }
+
+        function hideOverlay() {
+            overlay.style.display = 'none'; // Hide the overlay
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            document.getElementById('submit').disabled = true;
+            files = document.getElementById('input-file-now').files
+            if (files.length === 0) {
+                alert('Please select at least one file.');
+                return;
+            }
+            showOverlay('Uploading files...'); // Show the overlay with the uploading message
+            google.script.run.withSuccessHandler(uploadFilesToFolder).getFolder();
+        })
+
+        function uploadFilesToFolder(folderId) {
+            folderIdString = folderId;
+            if (files.length > 0) {
+                let uploadPromises = Array.from(files).map((file) => {
+                    return new Promise((resolve, reject) => {
+                        var fileR = new FileReader();
+                        fileR.onload = (e) => {
+                            const data = fileR.result.split(',');
+                            const obj = {
+                                fileName: file.name,
+                                mimeType: file.type,
+                                data: data[1],
+                            };
+
+                            google.script.run.withSuccessHandler((response) => {
+                                resolve();
+                            })
+                                .withFailureHandler((error) => {
+                                    reject();
+                                })
+                                .uploadFile(folderId, obj);
+                        };
+                        fileR.readAsDataURL(file);
+                    });
+                });
+
+                Promise.all(uploadPromises).then(() => {
+                    showOverlay('Granting permission...'); // Show the overlay with a new message for granting permissions
+                    google.script.run.withSuccessHandler(updatePageDataSheet).giveAccessToFolder(folderIdString);
+                }).catch((error) => {
+                    console.error('An error occurred during the file upload process', error);
+                    hideOverlay();
+                }).finally(() => {
+                    hideOverlay(); // Hide uploading overlay when all files are uploaded or failed
+                });
+            }
+        }
+
+        function updatePageDataSheet() {
+            showOverlay('Setting pages...'); // Show the overlay with a new message for setting pages
+            google.script.run.withSuccessHandler(function () {
+                hideOverlay(); // Hide the overlay when setting pages is complete
+            }).updatePageData();
+            document.getElementById('submit').disabled = false;
+        }
+    </script>
+</body>
+
+</html>

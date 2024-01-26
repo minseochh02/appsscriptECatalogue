@@ -1,0 +1,148 @@
+<style>
+    span {
+        font-size: 20px !important
+    }
+
+    p,
+    input,
+    button,
+    i,
+    div,
+    ul,
+    ol,
+    h4,
+    h6 {
+        font-size: 30px !important
+    }
+
+    h5 {
+        font-size: 50px !important
+    }
+
+    #viewer {
+        width: 100vw;
+        height: 100vh;
+        padding: 5vh 0px;
+    }
+
+    img {
+        width: 100vw;
+        height: auto;
+    }
+
+    div {
+        width: 100%;
+    }
+
+    div::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Hide scrollbar for IE, Edge and Firefox */
+    div {
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    #cart {
+        width: 50vw;
+        /* Adjust width as needed */
+        max-height: 100vh;
+        background-color: rgba(255, 255, 255, 0.5);
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    /* Styles for the cart when it is shrunk down */
+    #cart.shrink {
+        transform: translateX(calc(100% - 40px));
+        /* 40px is the width of the visible part of the handle when the cart is shrunk */
+    }
+
+    /* Styles for the cart handle */
+    #cartHandle {
+        width: 10vw;
+        /* Width of the handle */
+        height: 10vh;
+        position: absolute;
+        left: -10vw;
+        /* Adjust so the handle is to the left of the cart */
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .accordion-button {
+        justify-content: center;
+    }
+
+    /* Styles for the cart items container */
+    #cartItems {
+        overflow-y: auto;
+        max-height: 80vh;
+        /* Adjust height as needed, with scrolling if overflowed */
+    }
+
+    /* Styles for the cart summary and checkout button */
+    #cartSummary {
+        position: absolute;
+        width: 100%;
+    }
+
+    .fa-arrow-left {
+        transition: transform 0.3s ease-in-out;
+    }
+
+    #cart.shrink .fa-arrow-left {
+        transform: rotate(180deg);
+        /* Flips the icon to indicate expansion */
+    }
+
+    #myList {
+        max-height: 50vh;
+    }
+
+    #product-list {
+        position: absolute;
+        bottom: 0px;
+        overflow: scroll;
+        z-index: 10000;
+        background-color: #f0f0f0;
+    }
+
+    .h-100.h-custom.hidden {
+        display: none;
+    }
+
+    .h-100.h-custom {
+        width: 100vw;
+        height: 100vh;
+        overflow: scroll;
+        z-index: 1000;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+    }
+
+    .card-entrance {
+        transform: translateX(100%);
+        transition: transform 0.5s ease-out;
+    }
+
+    .card-slide-in {
+        transform: translateX(0);
+    }
+
+    .slide-out {
+        transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+        transform: translateX(100%);
+        /* Slide to the right */
+        opacity: 0;
+        /* Fade out */
+    }
+</style>
